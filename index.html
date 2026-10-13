@@ -9,7 +9,9 @@
   :root {
     --bg: #f4f6f3; --card: #fff; --ink: #17201a; --sub: #66736a; --line: #e2e7e2;
     --green: #166534; --green2: #dcfce7; --accent: #ca8a04; --red: #dc2626; --blue: #2563eb;
-    --rock: #fef3c7; --garden: #ecfccb;
+    --p3-bg: #e0f2fe; --p3-bd: #7dd3fc; --p3-ink: #0369a1;
+    --p4-bg: #dcfce7; --p4-bd: #86efac; --p4-ink: #15803d;
+    --p5-bg: #f3e8ff; --p5-bd: #d8b4fe; --p5-ink: #7e22ce;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--ink);
@@ -35,7 +37,20 @@
   .hole { border: 1px solid var(--line); border-radius: 10px; padding: 6px 0; text-align: center; background: #fff; position: relative; }
   .hole b { display: block; font-size: 15px; }
   .hole span { font-size: 11px; color: var(--sub); }
-  .hole.rock { background: var(--rock); } .hole.garden { background: var(--garden); }
+  .par3 { --pbg: var(--p3-bg); --pbd: var(--p3-bd); --pink: var(--p3-ink); }
+  .par4 { --pbg: var(--p4-bg); --pbd: var(--p4-bd); --pink: var(--p4-ink); }
+  .par5 { --pbg: var(--p5-bg); --pbd: var(--p5-bd); --pink: var(--p5-ink); }
+  .hole[class*="par"] { background: var(--pbg); border-color: var(--pbd); }
+  .hole[class*="par"] b { color: var(--pink); }
+  .hole.sel { outline-color: var(--pink); box-shadow: 0 2px 8px -2px var(--pbd); }
+  .hole.done::after { color: var(--pink); }
+  .pbadge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 14px; font-weight: 800;
+    background: var(--pbg); color: var(--pink); border: 1px solid var(--pbd); vertical-align: 2px; }
+  .legend { display: flex; gap: 6px; margin: -4px 0 4px; }
+  .legend span { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--pbg); color: var(--pink); border: 1px solid var(--pbd); }
+  table.sc th[class*="par"] { background: var(--pbg); color: var(--pink); }
+  table.sc th[class*="par"] .muted { color: var(--pink); opacity: .75; }
+  .slot div[class*="par"]:not(.lit):not(.win) { border-color: var(--pbd); }
   .hole.done::after { content: "✓"; position: absolute; top: 2px; right: 5px; font-size: 10px; color: var(--green); font-weight: 800; }
   .hole.sel { outline: 2.5px solid var(--green); outline-offset: -1px; }
 
@@ -143,6 +158,7 @@
     </div>
     <div class="card">
       <h2>홀 선택</h2>
+      <div class="legend"><span class="par3">Par 3</span><span class="par4">Par 4</span><span class="par5">Par 5</span></div>
       <div id="holeGrid"></div>
     </div>
     <div class="card">
@@ -321,7 +337,7 @@ const groupPlayers = () => CFG.players.filter((p) => p.group === ui.group);
 function renderInput() {
   for (const b of document.querySelectorAll('#groupSeg button')) b.classList.toggle('on', +b.dataset.g === ui.group);
   const h = CFG.holes[ui.hole];
-  $('#holeTitle').textContent = `${holeLabel(h)} · Par ${h.par}`;
+  $('#holeTitle').innerHTML = `${holeLabel(h)} <span class="pbadge par${h.par}">Par ${h.par}</span>`;
   $('#holeSub').textContent = `${h.course}코스 ${h.courseNo}번홀`;
 
   $('#inputRows').innerHTML = groupPlayers().map((p) => {
@@ -345,7 +361,7 @@ function renderInput() {
   $('#holeGrid').innerHTML = ['전반', '후반'].map((half) => `<div class="half-label">${half}</div><div class="holes">` +
     CFG.holes.filter((x) => x.half === half).map((x) => {
       const done = gp.every((p) => SCORES[p.id][x.idx] != null);
-      return `<div class="hole ${x.course === '락' ? 'rock' : 'garden'} ${done ? 'done' : ''} ${x.idx === ui.hole ? 'sel' : ''}" data-hole="${x.idx}">
+      return `<div class="hole par${x.par} ${done ? 'done' : ''} ${x.idx === ui.hole ? 'sel' : ''}" data-hole="${x.idx}">
         <b>${x.seq}</b><span>P${x.par} · ${x.courseNo}H</span></div>`;
     }).join('') + '</div>').join('');
 
@@ -356,7 +372,7 @@ function renderInput() {
 function scoreTable(players, clickable) {
   const H = CFG.holes;
   const front = H.filter((h) => h.half === '전반'), back = H.filter((h) => h.half === '후반');
-  const head = (hs) => hs.map((h) => `<th class="${clickable && h.idx === ui.hole ? 'cur' : ''}" data-hole="${h.idx}">${h.seq}<br><span class="muted">${h.par}</span></th>`).join('');
+  const head = (hs) => hs.map((h) => `<th class="par${h.par} ${clickable && h.idx === ui.hole ? 'cur' : ''}" data-hole="${h.idx}">${h.seq}<br><span class="muted">${h.par}</span></th>`).join('');
   const cells = (p, hs) => hs.map((h) => {
     const v = SCORES[p.id][h.idx];
     const cls = [HIDDEN[p.id] === h.idx ? 'hid' : '', clickable && h.idx === ui.hole ? 'cur' : '',
