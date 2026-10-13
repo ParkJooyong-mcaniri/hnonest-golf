@@ -73,6 +73,7 @@
   .btn { flex: 1; border: 0; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; background: #e7ece7; color: var(--ink); }
   .btn.primary { background: var(--green); color: #fff; }
   .btn:disabled { opacity: .45; }
+  .btn.danger { background: #fee2e2; color: var(--red); }
 
   /* 스코어카드 표 */
   .sc-wrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px; }
@@ -214,10 +215,13 @@
     </div>
     <div class="card admin">
       <h2>관리자</h2>
-      <p class="muted" style="margin-top:-4px">잘못 뽑은 히든홀 초기화 (Vercel 환경변수 ADMIN_PIN)</p>
+      <p class="muted" style="margin-top:-4px">대상 선택 후 PIN 입력 (Vercel 환경변수 ADMIN_PIN)</p>
       <select id="resetWho"></select>
       <input id="pin" type="password" inputmode="numeric" placeholder="관리자 PIN" />
-      <button class="btn" style="width:100%" id="resetBtn">히든홀 초기화</button>
+      <div class="nav" style="margin-top:4px">
+        <button class="btn" id="resetBtn">히든홀 초기화</button>
+        <button class="btn danger" id="resetScoreBtn">스코어 초기화</button>
+      </div>
     </div>
   </section>
 </main>
@@ -475,7 +479,7 @@ function renderRules() {
   $('#declTable').innerHTML = [1, 2].map((g) => CFG.players.filter((p) => p.group === g)
     .map((p) => `<tr><td>${p.name} <span class="muted">${g}조</span></td><td><b>${p.declared}</b>타</td></tr>`).join('')).join('');
   const sel = $('#resetWho');
-  if (!sel.options.length) sel.innerHTML = `<option value="">전체 초기화</option>` + CFG.players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+  if (!sel.options.length) sel.innerHTML = `<option value="">전체 (8명)</option>` + CFG.players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
 }
 
 function toast(msg) {
@@ -504,6 +508,17 @@ $('#resetBtn').onclick = async () => {
   if (!confirm(`${pid ? CFG.players.find((p) => p.id === pid).name : '전체'} 히든홀을 초기화할까요?`)) return;
   try { await api('/api/hidden', { reset: true, pid: pid || undefined, pin: $('#pin').value }); toast('초기화했어요'); load(); }
   catch (e) { toast(e.message); }
+};
+$('#resetScoreBtn').onclick = async () => {
+  const pid = $('#resetWho').value;
+  const who = pid ? CFG.players.find((p) => p.id === pid).name + '님의' : '8명 전체';
+  if (!confirm(`${who} 스코어(20홀)를 모두 지울까요?\n되돌릴 수 없어요.`)) return;
+  if (!pid && !confirm('정말 전체 스코어를 초기화할까요?')) return;
+  try {
+    await api('/api/score', { reset: true, pid: pid || undefined, pin: $('#pin').value });
+    for (const k of Object.keys(pending)) if (!pid || k.startsWith(pid + ':')) delete pending[k];
+    toast('스코어를 초기화했어요'); load();
+  } catch (e) { toast(e.message); }
 };
 
 // 4초마다 동기화 (화면이 켜져 있을 때만)

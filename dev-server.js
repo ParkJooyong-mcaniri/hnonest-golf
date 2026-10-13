@@ -7,6 +7,7 @@ const routes = {
   '/api/score': () => import('./api/score.js'),
   '/api/hidden': () => import('./api/hidden.js'),
   '/api/health': () => import('./api/health.js'),
+  '/api/rounds': () => import('./api/rounds.js'),
 };
 
 http

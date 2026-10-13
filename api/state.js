@@ -1,4 +1,4 @@
-import { EVENT_TITLE, HOLES, PLAYERS, HIDDEN_CANDIDATES, DRAW_REQUIRES_COMPLETE } from '../lib/config.js';
+import { EVENT_TITLE, HOLES, PLAYERS, HIDDEN_CANDIDATES, DRAW_REQUIRES_COMPLETE, COURSE, ROUND } from '../lib/config.js';
 import { getAll, backend } from '../lib/store.js';
 import { send } from '../lib/http.js';
 
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const hid = {};
     for (const [pid, v] of Object.entries(hidden)) hid[pid] = Number(v);
     send(res, 200, {
-      config: { title: EVENT_TITLE, holes: HOLES, players: PLAYERS, hiddenCandidates: HIDDEN_CANDIDATES, drawRequiresComplete: DRAW_REQUIRES_COMPLETE },
+      config: { title: EVENT_TITLE, course: { id: COURSE.id, name: COURSE.name }, roundId: ROUND.id, holes: HOLES, players: PLAYERS, hiddenCandidates: HIDDEN_CANDIDATES, drawRequiresComplete: DRAW_REQUIRES_COMPLETE },
       scores: out,
       hidden: hid,
       backend,
