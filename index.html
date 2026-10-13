@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#14532d" />
+<title>어니스트 게임 스코어카드</title>
+<style>
+  :root {
+    --bg: #f4f6f3; --card: #fff; --ink: #17201a; --sub: #66736a; --line: #e2e7e2;
+    --green: #166534; --green2: #dcfce7; --accent: #ca8a04; --red: #dc2626; --blue: #2563eb;
+    --rock: #fef3c7; --garden: #ecfccb;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  header { position: sticky; top: 0; z-index: 10; background: var(--green); color: #fff;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; gap: 8px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; }
+  #sync { font-size: 11px; opacity: .85; display: flex; align-items: center; gap: 5px; }
+  #sync i { width: 8px; height: 8px; border-radius: 50%; background: #86efac; display: inline-block; }
+  #sync.err i { background: #fca5a5; }
+  main { padding: 12px 16px; max-width: 640px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+  .seg { display: flex; background: #e7ece7; border-radius: 10px; padding: 3px; gap: 3px; margin-bottom: 10px; }
+  .seg button { flex: 1; border: 0; background: transparent; padding: 9px 0; border-radius: 8px; font-size: 15px; font-weight: 600; color: var(--sub); }
+  .seg button.on { background: #fff; color: var(--green); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .muted { color: var(--sub); font-size: 12px; }
+  h2 { font-size: 15px; margin: 4px 0 10px; }
+
+  /* 홀 선택 */
+  .holes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .half-label { font-size: 12px; font-weight: 700; color: var(--sub); margin: 8px 0 6px; }
+  .hole { border: 1px solid var(--line); border-radius: 10px; padding: 6px 0; text-align: center; background: #fff; position: relative; }
+  .hole b { display: block; font-size: 15px; }
+  .hole span { font-size: 11px; color: var(--sub); }
+  .hole.rock { background: var(--rock); } .hole.garden { background: var(--garden); }
+  .hole.done::after { content: "✓"; position: absolute; top: 2px; right: 5px; font-size: 10px; color: var(--green); font-weight: 800; }
+  .hole.sel { outline: 2.5px solid var(--green); outline-offset: -1px; }
+
+  /* 입력 */
+  .hole-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .hole-head .t { font-size: 18px; font-weight: 800; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; }
+  .row .nm { flex: 1; min-width: 0; }
+  .row .nm b { font-size: 16px; display: block; }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: #f8faf8; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .stepper .val { width: 52px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; font-weight: 800; background: #f1f5f1; border: 0; color: var(--ink); }
+  .stepper .val.empty { color: #b6c0b8; font-size: 15px; font-weight: 600; }
+  .tag { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
+  .t-eagle { background: #fde68a; color: #92400e; } .t-birdie { background: #dbeafe; color: #1d4ed8; }
+  .t-par { background: #e5e7eb; color: #374151; } .t-bogey { background: #fee2e2; color: #b91c1c; }
+  .t-double { background: #fecaca; color: #991b1b; } .t-worse { background: #7f1d1d; color: #fff; }
+  .nav { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { flex: 1; border: 0; border-radius: 12px; padding: 13px; font-size: 15px; font-weight: 700; background: #e7ece7; color: var(--ink); }
+  .btn.primary { background: var(--green); color: #fff; }
+  .btn:disabled { opacity: .45; }
+
+  /* 스코어카드 표 */
+  .sc-wrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px; }
+  table.sc { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  table.sc th, table.sc td { border: 1px solid var(--line); padding: 5px 6px; text-align: center; min-width: 28px; }
+  table.sc th { background: #f3f6f3; font-weight: 600; }
+  table.sc .nmcol { position: sticky; left: 0; background: #fff; text-align: left; font-weight: 700; z-index: 1; }
+  table.sc th.nmcol { background: #f3f6f3; }
+  table.sc .sum { background: #f0fdf4; font-weight: 800; }
+  table.sc td.hid { background: #fde68a; text-decoration: line-through; }
+  table.sc td.cur, table.sc th.cur { box-shadow: inset 0 0 0 2px var(--green); }
+  .under { color: var(--blue); font-weight: 800; } .over2 { color: var(--red); }
+
+  /* 리더보드 */
+  .lb { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .lb th { font-size: 11px; color: var(--sub); font-weight: 600; text-align: right; padding: 4px 4px 6px; }
+  .lb th:nth-child(2) { text-align: left; }
+  .lb td { padding: 10px 4px; border-top: 1px solid var(--line); text-align: right; }
+  .lb td.rk { width: 30px; text-align: center; font-weight: 800; font-size: 16px; }
+  .lb td.nm { text-align: left; } .lb td.nm b { display: block; font-size: 15px; }
+  .lb tr.out td { color: #a3aaa5; } .lb tr.out td.nm b { text-decoration: line-through; }
+  .gap { font-weight: 800; font-size: 16px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+  .pill.out { background: #fee2e2; color: var(--red); }
+  .pill.ing { background: #e0e7ff; color: #3730a3; }
+  .pill.wait { background: #fef9c3; color: #854d0e; }
+  .medal1 { color: #ca8a04; } .medal2 { color: #64748b; } .medal3 { color: #b45309; }
+
+  /* 히든홀 */
+  .people { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .people button { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 10px 0; font-size: 14px; font-weight: 600; }
+  .people button.on { background: var(--green); color: #fff; border-color: var(--green); }
+  .people button small { display: block; font-size: 10px; font-weight: 500; opacity: .75; margin-top: 2px; }
+  .slot { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0; }
+  .slot div { border: 2px solid var(--line); border-radius: 12px; padding: 10px 0; text-align: center; font-weight: 700; font-size: 13px; background: #fff; transition: transform .08s; }
+  .slot div small { display: block; font-size: 10px; color: var(--sub); font-weight: 500; }
+  .slot div.lit { border-color: var(--accent); background: #fef3c7; transform: scale(1.05); }
+  .slot div.win { border-color: var(--green); background: var(--green); color: #fff; transform: scale(1.08); }
+  .slot div.win small { color: #dcfce7; }
+  .result { text-align: center; padding: 6px 0 2px; font-size: 15px; }
+  .result b { font-size: 20px; color: var(--green); }
+  .list { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .list td { padding: 8px 2px; border-top: 1px solid var(--line); }
+  .list td:last-child { text-align: right; }
+
+  .rules li { margin-bottom: 6px; font-size: 14px; line-height: 1.5; }
+  .admin input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font-size: 15px; margin: 6px 0; }
+  .admin select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--line); font-size: 15px; background: #fff; }
+
+  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--line);
+    display: flex; padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+  nav.tabs button { flex: 1; border: 0; background: transparent; padding: 9px 0 10px; font-size: 11px; color: var(--sub); font-weight: 600; }
+  nav.tabs button .ic { display: block; font-size: 20px; margin-bottom: 1px; }
+  nav.tabs button.on { color: var(--green); }
+  .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: #111; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; max-width: 90vw; }
+  .toast.show { opacity: .92; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">⛳ 어니스트 게임</h1>
+  <div id="sync"><i></i><span>연결 중…</span></div>
+</header>
+
+<main>
+  <!-- 1. 스코어 입력 -->
+  <section id="tab-input">
+    <div class="seg" id="groupSeg">
+      <button data-g="1" class="on">1조</button><button data-g="2">2조</button>
+    </div>
+    <div class="card">
+      <div class="hole-head">
+        <div class="t" id="holeTitle"></div>
+        <div class="muted" id="holeSub"></div>
+      </div>
+      <div id="inputRows"></div>
+      <div class="nav">
+        <button class="btn" id="prevBtn">◀ 이전 홀</button>
+        <button class="btn primary" id="nextBtn">다음 홀 ▶</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>홀 선택</h2>
+      <div id="holeGrid"></div>
+    </div>
+    <div class="card">
+      <h2>스코어카드 <span class="muted" id="scGroupLabel"></span></h2>
+      <div class="sc-wrap" id="scTable"></div>
+      <p class="muted" style="margin:8px 0 0">노란 칸 = 히든홀(제외) · 칸을 누르면 해당 홀로 이동</p>
+    </div>
+  </section>
+
+  <!-- 2. 전체 순위 -->
+  <section id="tab-board" hidden>
+    <div class="card">
+      <h2>어니스트 순위 <span class="muted">(갭 = 최종타수 − 선언타수)</span></h2>
+      <table class="lb" id="lbTable"></table>
+      <p class="muted" style="margin:10px 0 0">최종타수 = 20홀 합계 − 히든홀 타수 · 갭이 마이너스면 OUT</p>
+    </div>
+    <div class="card">
+      <h2>전체 스코어 (8명)</h2>
+      <div class="sc-wrap" id="allTable"></div>
+    </div>
+  </section>
+
+  <!-- 3. 히든홀 -->
+  <section id="tab-hidden" hidden>
+    <div class="card">
+      <h2>히든홀 뽑기 🎲</h2>
+      <p class="muted" style="margin-top:-4px" id="hiddenHelp"></p>
+      <div class="people" id="peoplePick"></div>
+      <div class="slot" id="slot"></div>
+      <button class="btn primary" style="width:100%" id="drawBtn">뽑기</button>
+      <div class="result" id="drawResult"></div>
+    </div>
+    <div class="card">
+      <h2>추첨 현황</h2>
+      <table class="list" id="hiddenList"></table>
+    </div>
+  </section>
+
+  <!-- 4. 룰 -->
+  <section id="tab-rules" hidden>
+    <div class="card rules">
+      <h2>게임 룰</h2>
+      <ul>
+        <li>코스: 락 1·4·5·6 + 가든 7~12 (2·3번 미운영) = 10홀, Par 38</li>
+        <li>전반 10홀 + 후반 10홀 = <b>20홀, Par 76</b></li>
+        <li>각자 <b>히든홀(Par4 홀 1개)</b>을 뽑아 그 홀 타수를 빼서 <b>19홀 · Par 72</b> 기준 최종타수를 냅니다.</li>
+        <li><b>갭 = 최종타수 − 선언타수</b>. 갭이 작을수록 높은 순위.</li>
+        <li>갭이 <b>마이너스</b>(선언보다 잘 침)면 <b>OUT</b>.</li>
+        <li>같은 갭은 공동 순위.</li>
+      </ul>
+      <h2>선언 타수</h2>
+      <table class="list" id="declTable"></table>
+    </div>
+    <div class="card admin">
+      <h2>관리자</h2>
+      <p class="muted" style="margin-top:-4px">잘못 뽑은 히든홀 초기화 (Vercel 환경변수 ADMIN_PIN)</p>
+      <select id="resetWho"></select>
+      <input id="pin" type="password" inputmode="numeric" placeholder="관리자 PIN" />
+      <button class="btn" style="width:100%" id="resetBtn">히든홀 초기화</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-t="input" class="on"><span class="ic">✏️</span>스코어 입력</button>
+  <button data-t="board"><span class="ic">🏆</span>전체 순위</button>
+  <button data-t="hidden"><span class="ic">🎲</span>히든홀</button>
+  <button data-t="rules"><span class="ic">📋</span>룰</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+             set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+let CFG = null;              // 서버 설정
+let SCORES = {};             // pid → [20]
+let HIDDEN = {};             // pid → idx
+const pending = {};          // "pid:idx" → { value, until } 저장 중인 값은 폴링으로 덮어쓰지 않음
+const ui = {
+  tab: LS.get('tab', 'input'),
+  group: LS.get('group', 1),
+  hole: LS.get('hole', 0),
+  drawPid: LS.get('drawPid', null),
+};
+
+// ── 계산 ───────────────────────────────────────────────
+const holeLabel = (h) => `${h.half} ${h.seq}번`;
+const courseLabel = (h) => `${h.course} ${h.courseNo}H`;
+const sum = (a) => a.reduce((s, v) => s + (v ?? 0), 0);
+
+function tagFor(strokes, par) {
+  if (strokes == null) return '';
+  const d = strokes - par;
+  const [cls, txt] =
+    strokes === 1 ? ['t-eagle', '홀인원'] :
+    d <= -2 ? ['t-eagle', '이글'] : d === -1 ? ['t-birdie', '버디'] : d === 0 ? ['t-par', '파'] :
+    d === 1 ? ['t-bogey', '보기'] : d === 2 ? ['t-double', '더블'] : d === 3 ? ['t-worse', '트리플'] : ['t-worse', `+${d}`];
+  return `<span class="tag ${cls}">${txt}</span>`;
+}
+
+function stats(p) {
+  const s = SCORES[p.id] || [];
+  const played = s.filter((v) => v != null).length;
+  const gross = sum(s);
+  const parPlayed = CFG.holes.reduce((a, h) => a + (s[h.idx] != null ? h.par : 0), 0);
+  const hid = HIDDEN[p.id];
+  const hidScore = hid != null ? s[hid] : null;
+  const complete = played === CFG.holes.length;
+  const net = complete && hid != null ? gross - hidScore : null;
+  const gap = net != null ? net - p.declared : null;
+  return { played, gross, toPar: gross - parPlayed, hid, hidScore, complete, net, gap, out: gap != null && gap < 0 };
+}
+
+// ── 서버 통신 ──────────────────────────────────────────
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { cache: 'no-store' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
+
+function setSync(ok, text) {
+  $('#sync').classList.toggle('err', !ok);
+  $('#sync span').textContent = text;
+}
+
+async function load() {
+  try {
+    const d = await api('/api/state');
+    CFG = d.config;
+    const now = Date.now();
+    for (const [k, p] of Object.entries(pending)) {
+      const [pid, idx] = k.split(':');
+      if (p.until > now) d.scores[pid][idx] = p.value; else delete pending[k];
+    }
+    SCORES = d.scores; HIDDEN = d.hidden;
+    const t = new Date(d.ts);
+    setSync(true, `${d.backend === 'memory' ? '⚠️테스트DB ' : ''}${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')} 동기화`);
+    render();
+  } catch (e) {
+    setSync(false, '연결 끊김 · 재시도 중');
+  }
+}
+
+const saveTimers = {};
+function setStroke(pid, idx, value) {
+  SCORES[pid][idx] = value;
+  const key = `${pid}:${idx}`;
+  pending[key] = { value, until: Date.now() + 8000 };
+  render();
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(async () => {
+    try {
+      await api('/api/score', { pid, idx, strokes: value });
+      pending[key].until = Date.now() + 1500; // 다음 폴링까지만 유지
+    } catch (e) { toast('저장 실패: ' + e.message); delete pending[key]; load(); }
+  }, 350);
+}
+
+// ── 렌더 ───────────────────────────────────────────────
+function render() {
+  if (!CFG) return;
+  $('#title').textContent = '⛳ ' + CFG.title;
+  for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.t === ui.tab);
+  for (const t of ['input', 'board', 'hidden', 'rules']) $('#tab-' + t).hidden = ui.tab !== t;
+  if (ui.tab === 'input') renderInput();
+  if (ui.tab === 'board') renderBoard();
+  if (ui.tab === 'hidden') renderHidden();
+  if (ui.tab === 'rules') renderRules();
+}
+
+const groupPlayers = () => CFG.players.filter((p) => p.group === ui.group);
+
+function renderInput() {
+  for (const b of document.querySelectorAll('#groupSeg button')) b.classList.toggle('on', +b.dataset.g === ui.group);
+  const h = CFG.holes[ui.hole];
+  $('#holeTitle').textContent = `${holeLabel(h)} · Par ${h.par}`;
+  $('#holeSub').textContent = `${h.course}코스 ${h.courseNo}번홀`;
+
+  $('#inputRows').innerHTML = groupPlayers().map((p) => {
+    const v = SCORES[p.id][h.idx];
+    const st = stats(p);
+    const tp = st.played ? (st.toPar > 0 ? `+${st.toPar}` : st.toPar === 0 ? 'E' : st.toPar) : '-';
+    return `<div class="row">
+      <div class="nm"><b>${p.name}${tagFor(v, h.par)}</b><span class="muted">${st.played}/20홀 · ${st.gross}타 (${tp})</span></div>
+      <div class="stepper">
+        <button data-pid="${p.id}" data-d="-1" aria-label="${p.name} 타수 감소">−</button>
+        <button class="val ${v == null ? 'empty' : ''}" data-pid="${p.id}" data-d="0">${v ?? '입력'}</button>
+        <button data-pid="${p.id}" data-d="1" aria-label="${p.name} 타수 증가">+</button>
+      </div></div>`;
+  }).join('');
+
+  $('#prevBtn').disabled = ui.hole === 0;
+  $('#nextBtn').textContent = ui.hole === CFG.holes.length - 1 ? '마지막 홀' : '다음 홀 ▶';
+  $('#nextBtn').disabled = ui.hole === CFG.holes.length - 1;
+
+  const gp = groupPlayers();
+  $('#holeGrid').innerHTML = ['전반', '후반'].map((half) => `<div class="half-label">${half}</div><div class="holes">` +
+    CFG.holes.filter((x) => x.half === half).map((x) => {
+      const done = gp.every((p) => SCORES[p.id][x.idx] != null);
+      return `<div class="hole ${x.course === '락' ? 'rock' : 'garden'} ${done ? 'done' : ''} ${x.idx === ui.hole ? 'sel' : ''}" data-hole="${x.idx}">
+        <b>${x.seq}</b><span>P${x.par} · ${x.courseNo}H</span></div>`;
+    }).join('') + '</div>').join('');
+
+  $('#scGroupLabel').textContent = `${ui.group}조`;
+  $('#scTable').innerHTML = scoreTable(gp, true);
+}
+
+function scoreTable(players, clickable) {
+  const H = CFG.holes;
+  const front = H.filter((h) => h.half === '전반'), back = H.filter((h) => h.half === '후반');
+  const head = (hs) => hs.map((h) => `<th class="${clickable && h.idx === ui.hole ? 'cur' : ''}" data-hole="${h.idx}">${h.seq}<br><span class="muted">${h.par}</span></th>`).join('');
+  const cells = (p, hs) => hs.map((h) => {
+    const v = SCORES[p.id][h.idx];
+    const cls = [HIDDEN[p.id] === h.idx ? 'hid' : '', clickable && h.idx === ui.hole ? 'cur' : '',
+      v != null && v < h.par ? 'under' : '', v != null && v - h.par >= 2 ? 'over2' : ''].join(' ');
+    return `<td class="${cls}" data-hole="${h.idx}">${v ?? ''}</td>`;
+  }).join('');
+  const part = (p, hs) => { const s = hs.map((h) => SCORES[p.id][h.idx]); return s.some((v) => v != null) ? sum(s) : ''; };
+  return `<table class="sc"><tr><th class="nmcol">이름</th>${head(front)}<th class="sum">전반<br><span class="muted">${sum(front.map((h) => h.par))}</span></th>${head(back)}<th class="sum">후반<br><span class="muted">${sum(back.map((h) => h.par))}</span></th><th class="sum">합계<br><span class="muted">76</span></th></tr>` +
+    players.map((p) => `<tr><td class="nmcol">${p.name}</td>${cells(p, front)}<td class="sum">${part(p, front)}</td>${cells(p, back)}<td class="sum">${part(p, back)}</td><td class="sum">${stats(p).played ? stats(p).gross : ''}</td></tr>`).join('') +
+    `</table>`;
+}
+
+function renderBoard() {
+  const rows = CFG.players.map((p) => ({ p, s: stats(p) }));
+  const final = rows.filter((r) => r.s.gap != null && !r.s.out).sort((a, b) => a.s.gap - b.s.gap);
+  const pendingRows = rows.filter((r) => r.s.gap == null).sort((a, b) => b.s.played - a.s.played);
+  const outs = rows.filter((r) => r.s.out).sort((a, b) => b.s.gap - a.s.gap);
+  let rank = 0, prev = null;
+  final.forEach((r, i) => { if (r.s.gap !== prev) rank = i + 1; r.rank = rank; prev = r.s.gap; });
+
+  const medal = (n) => n === 1 ? '<span class="medal1">🥇</span>' : n === 2 ? '<span class="medal2">🥈</span>' : n === 3 ? '<span class="medal3">🥉</span>' : n;
+  const line = (r, rk, status) => {
+    const { p, s } = r;
+    const hidTxt = s.hid != null ? `${CFG.holes[s.hid].half[0]}${CFG.holes[s.hid].seq}H ${s.hidScore ?? '-'}타` : '미추첨';
+    return `<tr class="${s.out ? 'out' : ''}">
+      <td class="rk">${rk}</td>
+      <td class="nm"><b>${p.name}</b><span class="muted">${p.group}조 · 선언 ${p.declared} · 히든 ${hidTxt}</span></td>
+      <td>${s.played ? s.gross : '-'}<br><span class="muted">${s.played}/20</span></td>
+      <td>${s.net ?? '-'}</td>
+      <td>${status}</td></tr>`;
+  };
+  $('#lbTable').innerHTML = `<tr><th></th><th>이름</th><th>20홀</th><th>최종</th><th>갭</th></tr>` +
+    final.map((r) => line(r, medal(r.rank), `<span class="gap">+${r.s.gap}</span>`)).join('') +
+    pendingRows.map((r) => line(r, '·', r.s.complete ? '<span class="pill wait">추첨 대기</span>' : '<span class="pill ing">진행중</span>')).join('') +
+    outs.map((r) => line(r, '✕', `<span class="gap" style="color:var(--red)">${r.s.gap}</span><br><span class="pill out">OUT</span>`)).join('');
+
+  $('#allTable').innerHTML = scoreTable(CFG.players, false);
+}
+
+function renderHidden() {
+  const cand = CFG.hiddenCandidates;
+  $('#hiddenHelp').textContent = `Par4 홀 ${cand.length}개 중 1개를 무작위로 뽑아 최종 스코어에서 뺍니다. 1인 1회.` +
+    (CFG.drawRequiresComplete ? ' 20홀 입력을 마친 사람만 뽑을 수 있어요.' : '');
+  $('#peoplePick').innerHTML = CFG.players.map((p) =>
+    `<button data-pid="${p.id}" class="${ui.drawPid === p.id ? 'on' : ''}">${p.name}<small>${HIDDEN[p.id] != null ? '추첨완료' : `${stats(p).played}/20`}</small></button>`).join('');
+  if (!drawing) {
+    const sel = ui.drawPid ? HIDDEN[ui.drawPid] : null;
+    $('#slot').innerHTML = cand.map((i) => { const h = CFG.holes[i];
+      return `<div class="${sel === i ? 'win' : ''}" data-c="${i}">${holeLabel(h)}<small>${courseLabel(h)}</small></div>`; }).join('');
+    const p = CFG.players.find((x) => x.id === ui.drawPid);
+    const st = p && stats(p);
+    $('#drawBtn').disabled = !p || sel != null || (CFG.drawRequiresComplete && !st.complete);
+    $('#drawBtn').textContent = !p ? '이름을 먼저 선택하세요' : sel != null ? '이미 뽑았어요' :
+      (CFG.drawRequiresComplete && !st.complete) ? `20홀 입력 후 가능 (${st.played}/20)` : `${p.name} 히든홀 뽑기`;
+    $('#drawResult').innerHTML = p && sel != null ? resultText(p, sel) : '';
+  }
+  $('#hiddenList').innerHTML = CFG.players.map((p) => {
+    const i = HIDDEN[p.id], st = stats(p);
+    return `<tr><td><b>${p.name}</b> <span class="muted">${p.group}조</span></td><td>${i == null ? '<span class="muted">미추첨</span>' :
+      `${holeLabel(CFG.holes[i])} (${courseLabel(CFG.holes[i])}) · <b>${st.hidScore ?? '-'}타 제외</b>`}</td></tr>`;
+  }).join('');
+}
+
+function resultText(p, i) {
+  const h = CFG.holes[i], v = SCORES[p.id][i];
+  const st = stats(p);
+  return `${p.name}님의 히든홀은<br><b>${holeLabel(h)} (${courseLabel(h)})</b><br>` +
+    (v != null ? `<span class="muted">${v}타 제외 → 최종 ${st.net ?? '-'}타 · 갭 ${st.gap == null ? '-' : (st.gap > 0 ? '+' : '') + st.gap}${st.out ? ' · OUT' : ''}</span>` : '');
+}
+
+let drawing = false;
+async function draw() {
+  const pid = ui.drawPid; if (!pid || drawing) return;
+  drawing = true; $('#drawBtn').disabled = true; $('#drawResult').innerHTML = '';
+  let result, err;
+  const req = api('/api/hidden', { pid }).then((r) => (result = r.idx)).catch((e) => (err = e));
+  const tiles = [...document.querySelectorAll('#slot div')];
+  let k = 0, delay = 60;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 1800 || result === undefined && !err) {
+    tiles.forEach((t) => t.classList.remove('lit'));
+    tiles[k++ % tiles.length].classList.add('lit');
+    await new Promise((r) => setTimeout(r, delay));
+    if (Date.now() - t0 > 1000) delay = Math.min(delay + 25, 260);
+  }
+  await req;
+  tiles.forEach((t) => t.classList.remove('lit'));
+  drawing = false;
+  if (err) { toast(err.message); render(); return; }
+  HIDDEN[pid] = result;
+  render();
+  if (navigator.vibrate) navigator.vibrate(80);
+}
+
+function renderRules() {
+  $('#declTable').innerHTML = [1, 2].map((g) => CFG.players.filter((p) => p.group === g)
+    .map((p) => `<tr><td>${p.name} <span class="muted">${g}조</span></td><td><b>${p.declared}</b>타</td></tr>`).join('')).join('');
+  const sel = $('#resetWho');
+  if (!sel.options.length) sel.innerHTML = `<option value="">전체 초기화</option>` + CFG.players.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── 이벤트 ─────────────────────────────────────────────
+$('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; ui.tab = b.dataset.t; LS.set('tab', ui.tab); render(); scrollTo(0, 0); };
+$('#groupSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; ui.group = +b.dataset.g; LS.set('group', ui.group); render(); };
+const goHole = (i) => { ui.hole = Math.max(0, Math.min(CFG.holes.length - 1, i)); LS.set('hole', ui.hole); render(); };
+$('#prevBtn').onclick = () => goHole(ui.hole - 1);
+$('#nextBtn').onclick = () => { goHole(ui.hole + 1); scrollTo({ top: 0, behavior: 'smooth' }); };
+$('#holeGrid').onclick = (e) => { const h = e.target.closest('[data-hole]'); if (h) { goHole(+h.dataset.hole); scrollTo({ top: 0, behavior: 'smooth' }); } };
+$('#scTable').onclick = (e) => { const h = e.target.closest('[data-hole]'); if (h) { goHole(+h.dataset.hole); scrollTo({ top: 0, behavior: 'smooth' }); } };
+$('#inputRows').onclick = (e) => {
+  const b = e.target.closest('button[data-pid]'); if (!b) return;
+  const h = CFG.holes[ui.hole], cur = SCORES[b.dataset.pid][h.idx], d = +b.dataset.d;
+  const next = cur == null ? h.par + d : Math.max(1, Math.min(15, cur + d)); // 비어 있으면 Par 기준으로 시작
+  if (next !== cur) setStroke(b.dataset.pid, h.idx, next);
+};
+$('#peoplePick').onclick = (e) => { const b = e.target.closest('button'); if (!b || drawing) return; ui.drawPid = b.dataset.pid; LS.set('drawPid', ui.drawPid); render(); };
+$('#drawBtn').onclick = draw;
+$('#resetBtn').onclick = async () => {
+  const pid = $('#resetWho').value;
+  if (!confirm(`${pid ? CFG.players.find((p) => p.id === pid).name : '전체'} 히든홀을 초기화할까요?`)) return;
+  try { await api('/api/hidden', { reset: true, pid: pid || undefined, pin: $('#pin').value }); toast('초기화했어요'); load(); }
+  catch (e) { toast(e.message); }
+};
+
+// 4초마다 동기화 (화면이 켜져 있을 때만)
+load();
+setInterval(() => { if (!document.hidden && !drawing) load(); }, 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>
