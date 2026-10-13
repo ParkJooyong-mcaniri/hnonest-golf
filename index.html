@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#14532d" />
-<title>어니스트 게임 스코어카드</title>
+<title>락가든GC-어니스트 게임</title>
 <style>
   :root {
     --bg: #f4f6f3; --card: #fff; --ink: #17201a; --sub: #66736a; --line: #e2e7e2;
@@ -135,8 +135,8 @@
 </head>
 <body>
 <header>
-  <h1 id="title">⛳ 어니스트 게임</h1>
-  <div id="sync"><i></i><span>연결 중…</span></div>
+  <h1 id="title">⛳ 락가든GC-어니스트 게임</h1>
+  <div id="sync"><i></i><span>Redis 연결 중…</span></div>
 </header>
 
 <main>
@@ -298,10 +298,14 @@ async function load() {
     }
     SCORES = d.scores; HIDDEN = d.hidden;
     const t = new Date(d.ts);
-    setSync(true, `${d.backend === 'memory' ? '⚠️테스트DB ' : ''}${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')} 동기화`);
+    const hms = `${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}`;
+    setSync(d.backend === 'redis', d.backend === 'redis' ? `Redis On · ${hms}` : `Redis Off(테스트DB) · ${hms}`);
     render();
   } catch (e) {
-    setSync(false, '연결 끊김 · 재시도 중');
+    setSync(false, 'Redis 연결 실패');
+    if (!CFG) $('#tab-input').innerHTML = `<div class="card"><h2>서버 연결 오류</h2>
+      <p class="muted">스코어 서버에 연결하지 못했어요. 잠시 후 자동으로 다시 시도합니다.</p>
+      <p class="muted">관리자: <a href="/api/health">/api/health</a> 에서 원인을 확인하세요.<br>${String(e.message).slice(0, 200)}</p></div>`;
   }
 }
 
@@ -323,7 +327,7 @@ function setStroke(pid, idx, value) {
 // ── 렌더 ───────────────────────────────────────────────
 function render() {
   if (!CFG) return;
-  $('#title').textContent = '⛳ ' + CFG.title;
+  $('#title').textContent = '⛳ ' + CFG.title; document.title = CFG.title;
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.t === ui.tab);
   for (const t of ['input', 'board', 'hidden', 'rules']) $('#tab-' + t).hidden = ui.tab !== t;
   if (ui.tab === 'input') renderInput();
